@@ -1,0 +1,28 @@
+{
+  "name": "FeishuSaver (Standalone Feishu Bot Edition)",
+  "framework": "Backend: Node.js + TypeScript + InversifyJS + Lark Node SDK (WebSocket Mode) + SQLite",
+  "progress": "100%",
+  "architecture": "本项目已完成精简，摒弃了 Web 前端与 Express API 服务，重构为纯飞书机器人运行环境。机器人基于飞书 SDK 的 WebSocket 长连接方式启动，本地主动拉取消息事件，无需公网 IP 和反向代理。用户可通过飞书对话框直接发送 /search 搜索 TG 订阅源资源，或者发送 /transfer-quark 等执行网盘一键转存。所有配置（包含网盘 Cookie、网盘账号及订阅频道）均可通过飞书卡片式对话在交互中直接配置并自动持久化回写至本地 .env 文件，数据库采用 SQLite 存储会话和内部状态。",
+  "todo_list": [
+    {
+      "task": "项目初始化与依赖安装",
+      "done": true
+    },
+    {
+      "task": "删除 Web 前端模块并清理冗余 workspaces 依赖与配置",
+      "done": true
+    },
+    {
+      "task": "重构 backend 启动入口并新增独立机器人运行入口 (bot.ts)",
+      "done": true
+    },
+    {
+      "task": "配置默认运行脚本为纯机器人长连接模式并验证编译成功",
+      "done": true
+    },
+    {
+      "task": "后端全套单元测试跑通且验证绿灯",
+      "done": true
+    }
+  ]
+}
