@@ -1,5 +1,7 @@
 # FeishuSaver (飞书云盘转存助手)
 
+> 基于飞书 WebSocket 构建的无 UI 云盘资源搜刮、校验与一键转存助手。
+
 `FeishuSaver` 是一个基于飞书机器人的智能云盘资源检索与一键转存服务。**本项目二次开发自原开源项目 [FeishuSaver](https://github.com/jiangrui1994/FeishuSaver)**，在此基础上进行了彻底的架构重构与深度精简：去除了所有的前端 Web 页面和外部 Express API 路由，转型为**纯粹的、面向飞书机器人长连接（WebSocket）的独立后端服务**，不依赖任何公网 IP 或反向代理。
 
 ---
