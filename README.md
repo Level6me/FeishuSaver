@@ -121,12 +121,12 @@ sequenceDiagram
 ./deploy.sh --help
 ```
 
-### 1. ⚡ 一键部署 (自动配置、安装依赖并启动)
-执行以下命令，根据引导提示输入飞书机器人的 App ID 和 App Secret，并选择模式 `1`。脚本将全自动处理依赖安装、代码编译以及 PM2 进程守护：
+### 1. ⚡ 一键极速部署 (推荐)
+直接在服务器终端运行以下一条命令即可！该命令会自动下载代码、安装依赖、完成编译并通过 PM2 守护运行：
 ```bash
-chmod +x deploy.sh
-./deploy.sh
+bash <(curl -sL https://raw.githubusercontent.com/Level6me/FeishuSaver/main/install.sh)
 ```
+*(如果已经克隆了代码到本地，也可以直接执行 `chmod +x deploy.sh && ./deploy.sh`)*
 
 ### 2. 🛠️ 手动部署与指令控制
 如果您希望手动控制依赖安装与编译，执行 `./deploy.sh` 并在模式中选择 `2`。脚本会帮您自动生成/覆写根目录的 `.env` 配置文件，随后您可以手动运行以下命令：
