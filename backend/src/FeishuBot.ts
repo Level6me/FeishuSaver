@@ -546,6 +546,10 @@ async function buildSearchCard(searchId: string, page: number, client: lark.Clie
        
        mdContent += `📝 介绍: <font color='grey'>${desc}</font>\n`;
     }
+    
+    if (item.channel) {
+       mdContent += `<font color='grey'>来源于: ${item.channel}</font>\n`;
+    }
 
     colSet.columns.push({
       "tag": "column",
