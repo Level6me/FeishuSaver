@@ -468,69 +468,74 @@ async function buildDoubanCard(type: string, tag: string, movies: any[], client:
         }
       });
     } else {
-      for (let i = 0; i < movies.length; i += 2) {
-        const pair = movies.slice(i, i + 2);
-        const pairImgKeys = imgKeys.slice(i, i + 2);
-        const pairAbstracts = abstracts.slice(i, i + 2);
+      for (let i = 0; i < movies.length; i++) {
+        const movie = movies[i];
+        const imgKey = imgKeys[i];
+        const abstract = abstracts[i];
         
-        const columns = pair.map((movie, index) => {
-          const imgKey = pairImgKeys[index];
-          const abstract = pairAbstracts[index];
-          
-          const colElements: any[] = [];
-          if (imgKey) {
-            colElements.push({
-              "tag": "img",
-              "img_key": imgKey,
-              "alt": { "content": movie.title, "tag": "plain_text" }
-            });
-          }
-          
-          // Add title and abstract
-          colElements.push({
-            "tag": "markdown",
-            "content": "**" + movie.title + "**\n⭐️ 评分: " + (movie.rate || '暂无') + (movie.is_new ? ' 🆕' : '')
-          });
-          
-          if (abstract) {
-            colElements.push({
-              "tag": "markdown",
-              "content": "<font color='grey'>" + abstract + "</font>"
-            });
-          }
-          
-          colElements.push({
-            "tag": "action",
-            "actions": [
-              {
-                "tag": "button",
-                "text": { "content": "ℹ️ 详情", "tag": "plain_text" },
-                "type": "default",
-                "value": { "action": "douban_movie_detail", "id": movie.id, "cover": movie.cover, "title": movie.title }
-              },
-              {
-                "tag": "button",
-                "text": { "content": "🎬 搜资源", "tag": "plain_text" },
-                "type": "primary",
-                "value": { "action": "search_douban", "keyword": movie.title }
-              }
-            ]
-          });
-          
-          return {
-            "tag": "column",
-            "width": "weighted",
-            "weight": 1,
-            "vertical_align": "top",
-            "elements": colElements
-          };
+        const textElements: any[] = [];
+        
+        // Add title and abstract
+        textElements.push({
+          "tag": "markdown",
+          "content": "**" + movie.title + "**\n⭐️ 评分: " + (movie.rate || '暂无') + (movie.is_new ? ' 🆕' : '')
         });
-
-        elements.push({
+        
+        if (abstract) {
+          textElements.push({
+            "tag": "markdown",
+            "content": "<font color='grey'>" + abstract + "</font>"
+          });
+        }
+        
+        const colSet: any = {
           "tag": "column_set",
           "flex_mode": "none",
           "background_style": "default",
-          "columns": columns
+          "columns": [
+            {
+              "tag": "column",
+              "width": "weighted",
+              "weight": 2,
+              "vertical_align": "top",
+              "elements": textElements
+            }
+          ]
+        };
+        
+        if (imgKey) {
+           colSet.columns.unshift({
+              "tag": "column",
+              "width": "weighted",
+              "weight": 1,
+              "vertical_align": "top",
+              "elements": [{
+                "tag": "img",
+                "img_key": imgKey,
+                "alt": { "content": movie.title, "tag": "plain_text" }
+              }]
+           });
+        }
+        
+        elements.push(colSet);
+        
+        elements.push({
+          "tag": "action",
+          "layout": "bisected",
+          "actions": [
+            {
+              "tag": "button",
+              "text": { "content": "ℹ️ 详情", "tag": "plain_text" },
+              "type": "default",
+              "value": { "action": "douban_movie_detail", "id": movie.id, "cover": movie.cover, "title": movie.title }
+            },
+            {
+              "tag": "button",
+              "text": { "content": "🎬 搜资源", "tag": "plain_text" },
+              "type": "primary",
+              "value": { "action": "search_douban", "keyword": movie.title }
+            }
+          ]
         });
         
         elements.push({ "tag": "hr" });
