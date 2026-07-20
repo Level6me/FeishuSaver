@@ -299,6 +299,94 @@ async function getDoubanAbstract(subjectId: string): Promise<string> {
   return "";
 }
 
+async function getDoubanFullDetail(subjectId: string): Promise<any> {
+  try {
+    const res = await axios.get("https://movie.douban.com/j/subject_abstract?subject_id=" + subjectId, {
+      headers: { 'Referer': 'https://movie.douban.com/' },
+      timeout: 3000
+    });
+    if (res.data && res.data.subject) {
+      return res.data.subject;
+    }
+  } catch (e) {
+    // Ignore error
+  }
+  return null;
+}
+
+async function buildDoubanDetailCard(subject: any, client: lark.Client, doubanTabs: any[], coverUrl?: string): Promise<any> {
+  const elements = [...doubanTabs];
+  
+  let md = `**${subject.title}**\n\n`;
+  md += `⭐️ **豆瓣评分**: ${subject.rate || '暂无'}\n`;
+  if (subject.directors && subject.directors.length > 0) md += `🎬 **导演**: ${subject.directors.join(' / ')}\n`;
+  if (subject.actors && subject.actors.length > 0) md += `🎭 **主演**: ${subject.actors.join(' / ')}\n`;
+  if (subject.types && subject.types.length > 0) md += `🏷️ **类型**: ${subject.types.join(' / ')}\n`;
+  if (subject.region) md += `🌍 **地区**: ${subject.region}\n`;
+  if (subject.release_year) md += `📅 **年份**: ${subject.release_year}\n`;
+  if (subject.duration) md += `⏳ **片长**: ${subject.duration}\n`;
+  if (subject.short_comment && subject.short_comment.content) {
+     md += `\n💬 **短评**: "${subject.short_comment.content}" —— ${subject.short_comment.author}\n`;
+  }
+  
+  if (coverUrl) {
+     const imgKey = await getFeishuImageKey(coverUrl, client);
+     if (imgKey) {
+        elements.push({
+           tag: "column_set",
+           flex_mode: "none",
+           background_style: "default",
+           columns: [
+             {
+               tag: "column",
+               width: "weighted",
+               weight: 1,
+               vertical_align: "top",
+               elements: [{ tag: "img", img_key: imgKey, alt: { content: "cover", tag: "plain_text" } }]
+             },
+             {
+               tag: "column",
+               width: "weighted",
+               weight: 2,
+               vertical_align: "top",
+               elements: [{ tag: "markdown", content: md }]
+             }
+           ]
+        });
+     } else {
+        elements.push({ tag: "markdown", content: md });
+     }
+  } else {
+     elements.push({ tag: "markdown", content: md });
+  }
+  
+  elements.push({ tag: "hr" });
+  
+  elements.push({
+    tag: "action",
+    actions: [
+      {
+        tag: "button",
+        text: { content: "🎬 立即搜资源", tag: "plain_text" },
+        type: "primary",
+        value: { action: "search_douban", keyword: subject.title }
+      },
+      {
+        tag: "button",
+        text: { content: "🔙 返回推荐列表", tag: "plain_text" },
+        type: "default",
+        value: { action: "restore_douban_snapshot" }
+      }
+    ]
+  });
+  
+  return {
+    config: { wide_screen_mode: true },
+    header: { title: { content: `ℹ️ 影片详情 - ${subject.title}`, tag: "plain_text" }, template: "blue" },
+    elements: elements
+  };
+}
+
 async function getFeishuImageKey(coverUrl: string, client: lark.Client): Promise<string | null> {
   if (imageKeyCache.has(coverUrl)) {
     return imageKeyCache.get(coverUrl)!;
@@ -411,6 +499,24 @@ async function buildDoubanCard(type: string, tag: string, movies: any[], client:
             });
           }
           
+          colElements.push({
+            "tag": "action",
+            "actions": [
+              {
+                "tag": "button",
+                "text": { "content": "ℹ️ 详情", "tag": "plain_text" },
+                "type": "default",
+                "value": { "action": "douban_movie_detail", "id": movie.id, "cover": movie.cover, "title": movie.title }
+              },
+              {
+                "tag": "button",
+                "text": { "content": "🎬 搜资源", "tag": "plain_text" },
+                "type": "primary",
+                "value": { "action": "search_douban", "keyword": movie.title }
+              }
+            ]
+          });
+          
           return {
             "tag": "column",
             "width": "weighted",
@@ -425,20 +531,6 @@ async function buildDoubanCard(type: string, tag: string, movies: any[], client:
           "flex_mode": "none",
           "background_style": "default",
           "columns": columns
-        });
-        
-        // 在 column_set 下方添加对应的按钮，使用 bisected 保证强制对齐
-        const pairActions = pair.map(movie => ({
-          "tag": "button",
-          "text": { "content": "🎬 搜资源", "tag": "plain_text" },
-          "type": "default",
-          "value": { "action": "search_douban", "keyword": movie.title }
-        }));
-        
-        elements.push({
-          "tag": "action",
-          "layout": "bisected",
-          "actions": pairActions
         });
         
         elements.push({ "tag": "hr" });
@@ -1199,6 +1291,61 @@ export function startFeishuBot() {
         return {
            card: { type: "raw", data: loadingCard },
            toast: { type: "info", content: "🎬 正在为您拉取豆瓣榜单..." }
+        };
+      }
+
+      if (actionValue.action === 'douban_movie_detail') {
+        const id = actionValue.id;
+        const cover = actionValue.cover;
+        const title = actionValue.title;
+        const openMessageId = data.context?.open_message_id;
+        
+        const currentCard = openMessageId ? cardStateCache.get(openMessageId) : undefined;
+        if (currentCard && openMessageId) {
+            doubanSnapshotCache.set(openMessageId, currentCard);
+        }
+        
+        let doubanTabs: any[] = [];
+        if (currentCard) {
+            doubanTabs = extractDoubanTabs(currentCard);
+        }
+        
+        (async () => {
+           try {
+              const detail = await getDoubanFullDetail(id);
+              if (detail) {
+                 const cardJson = await buildDoubanDetailCard(detail, client, doubanTabs, cover);
+                 if (openMessageId) {
+                    cardStateCache.set(openMessageId, cardJson);
+                    await client.im.message.patch({
+                       path: { message_id: openMessageId },
+                       data: { content: JSON.stringify(cardJson) }
+                    });
+                 }
+              } else {
+                 if (openMessageId) {
+                    await client.im.message.patch({
+                       path: { message_id: openMessageId },
+                       data: { content: JSON.stringify(currentCard) }
+                    });
+                 }
+              }
+           } catch(e) {
+              logger.error('Movie Detail Error:', e);
+           }
+        })();
+        
+        const loadingDetailCard = {
+           config: { update_multi: true },
+           header: { title: { content: `ℹ️ 影片详情 - ${title}`, tag: "plain_text" }, template: "blue" },
+           elements: [
+              ...doubanTabs,
+              { tag: "markdown", content: "⏳ 正在为您拉取豆瓣影片详细信息..." }
+           ]
+        };
+        return { 
+           card: { type: "raw", data: loadingDetailCard },
+           toast: { type: "info", content: "🎬 正在拉取资料..." } 
         };
       }
 
