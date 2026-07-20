@@ -327,6 +327,7 @@ async function getFeishuImageKey(coverUrl: string, client: lark.Client): Promise
 
 const searchCache = new Map<string, any>();
 const cardStateCache = new Map<string, any>();
+const doubanSnapshotCache = new Map<string, any>();
 
 
 
@@ -478,6 +479,7 @@ async function buildSearchCard(searchId: string, page: number, client: lark.Clie
   const cacheVal = searchCache.get(searchId);
   const items = cacheVal && !Array.isArray(cacheVal) ? (cacheVal.items || []) : (cacheVal || []);
   const keyword = cacheVal && !Array.isArray(cacheVal) ? (cacheVal.keyword || '') : '';
+  const backToDouban = cacheVal && !Array.isArray(cacheVal) ? !!cacheVal.backToDouban : false;
   const total = items.length;
   const pageSize = 10;
   const maxPage = Math.ceil(total / pageSize) || 1;
@@ -627,6 +629,21 @@ async function buildSearchCard(searchId: string, page: number, client: lark.Clie
     elements.push({
       "tag": "action",
       "actions": pageActions
+    });
+  }
+  
+  if (backToDouban) {
+    elements.push({ "tag": "hr" });
+    elements.push({
+      "tag": "action",
+      "actions": [
+        {
+          "tag": "button",
+          "text": { "content": "🔙 返回推荐列表", "tag": "plain_text" },
+          "type": "default",
+          "value": { "action": "restore_douban_snapshot" }
+        }
+      ]
     });
   }
 
@@ -1226,34 +1243,43 @@ export function startFeishuBot() {
               });
               
               const searchId = openMessageId + '_' + Date.now();
-              searchCache.set(searchId, { keyword, items: validItems });
+              searchCache.set(searchId, { keyword, items: validItems, backToDouban: true });
               const cardJson = await buildSearchCard(searchId, 1, client);
               
-              if (fs.existsSync(path.join(process.cwd(), '.feishu_chat_id'))) {
-                 const chatId = fs.readFileSync(path.join(process.cwd(), '.feishu_chat_id'), 'utf8');
-                 await client.im.message.create({
-                    params: { receive_id_type: 'chat_id' },
-                    data: {
-                       receive_id: chatId,
-                       msg_type: 'interactive',
-                       content: JSON.stringify(cardJson)
-                    }
-                 });
-              } else {
-                 await client.im.message.reply({
-                   path: { message_id: openMessageId },
-                   data: { content: JSON.stringify(cardJson), msg_type: 'interactive' }
+              if (openMessageId) {
+                 cardStateCache.set(openMessageId, cardJson);
+                 await client.im.message.patch({
+                    path: { message_id: openMessageId },
+                    data: { content: JSON.stringify(cardJson) }
                  });
               }
            } catch(e) {
               logger.error('Search Douban Error:', e);
            }
         })();
-        const cachedCard = openMessageId ? cardStateCache.get(openMessageId) : undefined;
+        const currentCard = openMessageId ? cardStateCache.get(openMessageId) : undefined;
+        if (currentCard && openMessageId) {
+            doubanSnapshotCache.set(openMessageId, currentCard);
+        }
+        const loadingSearchCard = {
+           config: { update_multi: true },
+           header: { title: { content: "🔍 正在全网搜索中...", tag: "plain_text" }, template: "blue" },
+           elements: [{ tag: "markdown", content: "⏳ 请稍候，正在为您搜寻资源..." }]
+        };
         return { 
-           card: cachedCard ? { type: "raw", data: cachedCard } : undefined,
+           card: { type: "raw", data: loadingSearchCard },
            toast: { type: "info", content: "🔍 正在为您搜索: " + keyword } 
         };
+      }
+      
+      if (actionValue.action === 'restore_douban_snapshot') {
+        const openMessageId = data.context?.open_message_id;
+        if (openMessageId && doubanSnapshotCache.has(openMessageId)) {
+          const snapshot = doubanSnapshotCache.get(openMessageId);
+          cardStateCache.set(openMessageId, snapshot);
+          return { card: { type: "raw", data: snapshot } };
+        }
+        return { toast: { type: "error", content: "无法恢复上一页，状态已过期" } };
       }
 
       if (actionValue.action === 'change_page') {
