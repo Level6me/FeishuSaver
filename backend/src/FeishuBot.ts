@@ -475,7 +475,17 @@ async function buildDoubanCard(type: string, tag: string, movies: any[], client:
   };
 }
 
-async function buildSearchCard(searchId: string, page: number, client: lark.Client): Promise<any> {
+function extractDoubanTabs(snapshot: any): any[] {
+  if (!snapshot || !snapshot.elements) return [];
+  const tabs = [];
+  for (const el of snapshot.elements) {
+    tabs.push(el);
+    if (el.tag === 'hr') break;
+  }
+  return tabs;
+}
+
+async function buildSearchCard(searchId: string, page: number, client: lark.Client, doubanTabs: any[] = []): Promise<any> {
   const cacheVal = searchCache.get(searchId);
   const items = cacheVal && !Array.isArray(cacheVal) ? (cacheVal.items || []) : (cacheVal || []);
   const keyword = cacheVal && !Array.isArray(cacheVal) ? (cacheVal.keyword || '') : '';
@@ -495,6 +505,10 @@ async function buildSearchCard(searchId: string, page: number, client: lark.Clie
   const imgKeys = await Promise.all(imgPromises);
 
   const elements: any[] = [];
+  if (doubanTabs && doubanTabs.length > 0) {
+    elements.push(...doubanTabs);
+  }
+  
   pageItems.forEach((item: any, index: number) => {
     const pwdId = item.pwdId; 
     const imgKey = imgKeys[index];
@@ -1192,6 +1206,16 @@ export function startFeishuBot() {
         const keyword = actionValue.keyword;
         const openMessageId = data.context?.open_message_id;
         
+        const currentCard = openMessageId ? cardStateCache.get(openMessageId) : undefined;
+        if (currentCard && openMessageId) {
+            doubanSnapshotCache.set(openMessageId, currentCard);
+        }
+        
+        let doubanTabs: any[] = [];
+        if (currentCard) {
+            doubanTabs = extractDoubanTabs(currentCard);
+        }
+        
         (async () => {
            try {
               // Same logic as /search
@@ -1244,7 +1268,7 @@ export function startFeishuBot() {
               
               const searchId = openMessageId + '_' + Date.now();
               searchCache.set(searchId, { keyword, items: validItems, backToDouban: true });
-              const cardJson = await buildSearchCard(searchId, 1, client);
+              const cardJson = await buildSearchCard(searchId, 1, client, doubanTabs);
               
               if (openMessageId) {
                  cardStateCache.set(openMessageId, cardJson);
@@ -1257,14 +1281,14 @@ export function startFeishuBot() {
               logger.error('Search Douban Error:', e);
            }
         })();
-        const currentCard = openMessageId ? cardStateCache.get(openMessageId) : undefined;
-        if (currentCard && openMessageId) {
-            doubanSnapshotCache.set(openMessageId, currentCard);
-        }
+        
         const loadingSearchCard = {
            config: { update_multi: true },
            header: { title: { content: "🔍 正在全网搜索中...", tag: "plain_text" }, template: "blue" },
-           elements: [{ tag: "markdown", content: "⏳ 请稍候，正在为您搜寻资源..." }]
+           elements: [
+              ...doubanTabs,
+              { tag: "markdown", content: "⏳ 请稍候，正在为您搜寻资源..." }
+           ]
         };
         return { 
            card: { type: "raw", data: loadingSearchCard },
@@ -1290,7 +1314,19 @@ export function startFeishuBot() {
           return { toast: { type: "error", content: "搜索结果已过期，请重新搜索" } };
         }
         
-        const cardJson = await buildSearchCard(searchId, page, client);
+        const openMessageId = data.context?.open_message_id;
+        let doubanTabs: any[] = [];
+        if (openMessageId && doubanSnapshotCache.has(openMessageId)) {
+           const cacheVal = searchCache.get(searchId);
+           if (cacheVal && cacheVal.backToDouban) {
+              doubanTabs = extractDoubanTabs(doubanSnapshotCache.get(openMessageId));
+           }
+        }
+        
+        const cardJson = await buildSearchCard(searchId, page, client, doubanTabs);
+        if (openMessageId) {
+            cardStateCache.set(openMessageId, cardJson);
+        }
         return {
           card: { type: "raw", data: cardJson },
           toast: { type: "info", content: `已切换至第 ${page} 页` }
