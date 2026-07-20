@@ -255,6 +255,12 @@ function buildConfigCard() {
                 "text": { "content": "管理频道", "tag": "plain_text" },
                 "type": "default",
                 "value": { "action": "manage_tele_channels" }
+              },
+              {
+                "tag": "button",
+                "text": { "content": "频道列表", "tag": "plain_text" },
+                "type": "primary",
+                "value": { "action": "view_channels_list" }
               }
             ]
           }
@@ -729,7 +735,13 @@ export function startFeishuBot() {
               const parts = text.split(/,|，/);
               if (parts.length >= 2) {
                 const channels = getChannelsList();
-                channels.push({ name: parts[0].trim(), id: parts[1].trim() });
+                const newId = parts[1].trim();
+                const newName = parts[0].trim();
+                if (channels.some((c: any) => c.id === newId)) {
+                  userStates.delete(openId);
+                  return client.im.message.reply({ path: { message_id: messageId }, data: { content: JSON.stringify({ text: `❌ 频道添加失败，频道ID ${newId} 已存在！` }), msg_type: 'text' }});
+                }
+                channels.push({ name: newName, id: newId });
                 envValue = JSON.stringify(channels);
               } else {
                 return client.im.message.reply({ path: { message_id: messageId }, data: { content: JSON.stringify({ text: "❌ 格式错误，请使用: 频道名,频道ID" }), msg_type: 'text' }});
@@ -1073,6 +1085,9 @@ export function startFeishuBot() {
 
       if (actionValue.action === 'manage_tele_channels') {
         return { card: { type: "raw", data: buildChannelManageCard(0) } };
+      }
+      if (actionValue.action === 'view_channels_list') {
+        return { card: { type: "raw", data: buildChannelsListCard() } };
       }
       if (actionValue.action === 'manage_tele_channels_page') {
         return { card: { type: "raw", data: buildChannelManageCard(Number(actionValue.page) || 0) } };
@@ -1501,5 +1516,40 @@ export function buildSaveDirCard(driveName: string, pwdId: string, passcode: str
     "config": { "update_multi": true },
     "header": { "title": { "content": `🎯 选择 ${driveName} 转存位置`, "tag": "plain_text" }, "template": "blue" },
     "elements": elements
+  };
+}
+
+function buildChannelsListCard() {
+  const channels = getChannelsList();
+  let content = "**频道列表 (ID - 名称)**\n\n";
+  if (channels.length === 0) {
+    content += "暂无频道。";
+  } else {
+    channels.forEach((c: any) => {
+      content += `- \`${c.id}\` : ${c.name}\n`;
+    });
+  }
+
+  return {
+    "config": { "update_multi": true },
+    "header": { "title": { "content": "📋 所有频道列表", "tag": "plain_text" }, "template": "turquoise" },
+    "elements": [
+      {
+        "tag": "markdown",
+        "content": content.trim()
+      },
+      { "tag": "hr" },
+      {
+        "tag": "action",
+        "actions": [
+          {
+            "tag": "button",
+            "text": { "content": "🔙 返回主配置", "tag": "plain_text" },
+            "type": "default",
+            "value": { "action": "back_to_main_config" }
+          }
+        ]
+      }
+    ]
   };
 }
