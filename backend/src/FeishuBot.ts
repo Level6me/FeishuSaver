@@ -788,7 +788,7 @@ export function startFeishuBot() {
         }
       }
 
-      if (text === '/config') {
+      if (text === '/config' || text === '/配置') {
         client.im.message.reply({
           path: { message_id: messageId },
           data: { content: JSON.stringify(buildConfigCard()), msg_type: 'interactive' }
@@ -796,12 +796,12 @@ export function startFeishuBot() {
         return null;
       }
 
-      if (text.startsWith('/search')) {
-        const keyword = text.slice(7).trim();
+      if (text.startsWith('/search') || text.startsWith('/搜索')) {
+        const keyword = text.startsWith('/search') ? text.slice(7).trim() : text.slice(3).trim();
         if (!keyword) {
           client.im.message.reply({
             path: { message_id: messageId },
-            data: { content: JSON.stringify({ text: "请输入需要搜索的资源名称，例如：/search 庆余年" }), msg_type: 'text' }
+            data: { content: JSON.stringify({ text: "请输入需要搜索的资源名称，例如：/search 庆余年 或 /搜索 庆余年" }), msg_type: 'text' }
           });
           return null;
         }
@@ -879,7 +879,7 @@ export function startFeishuBot() {
         });
         return null;
       
-      } else if (text.startsWith('/hot') || text.startsWith('/discover')) {
+      } else if (text.startsWith('/hot') || text.startsWith('/discover') || text.startsWith('/排行')) {
         const type = 'movie';
         const tag = '热门';
         
@@ -950,7 +950,7 @@ export function startFeishuBot() {
       } else {
           await client.im.message.reply({
              path: { message_id: messageId },
-             data: { content: JSON.stringify({ text: `🤖 欢迎使用 FeishuSaver Bot!\n支持的命令：\n/search <关键字>\n/transfer-quark <分享ID> [提取码]` }), msg_type: 'text' }
+             data: { content: JSON.stringify({ text: `🤖 欢迎使用 FeishuSaver Bot!\n支持的命令：\n/search 或 /搜索 <关键字>\n/hot 或 /排行\n/config 或 /配置\n/transfer-quark <分享ID> [提取码]` }), msg_type: 'text' }
            });
       }
     },
