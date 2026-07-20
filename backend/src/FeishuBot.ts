@@ -468,74 +468,72 @@ async function buildDoubanCard(type: string, tag: string, movies: any[], client:
         }
       });
     } else {
-      for (let i = 0; i < movies.length; i++) {
-        const movie = movies[i];
-        const imgKey = imgKeys[i];
-        const abstract = abstracts[i];
+      for (let i = 0; i < movies.length; i += 2) {
+        const pair = movies.slice(i, i + 2);
+        const pairImgKeys = imgKeys.slice(i, i + 2);
+        const pairAbstracts = abstracts.slice(i, i + 2);
         
-        const textElements: any[] = [];
-        
-        // Add title and abstract
-        textElements.push({
-          "tag": "markdown",
-          "content": "**" + movie.title + "**\n⭐️ 评分: " + (movie.rate || '暂无') + (movie.is_new ? ' 🆕' : '')
-        });
-        
-        if (abstract) {
-          textElements.push({
+        const columns = pair.map((movie, index) => {
+          const imgKey = pairImgKeys[index];
+          const abstract = pairAbstracts[index];
+          
+          const colElements: any[] = [];
+          if (imgKey) {
+            colElements.push({
+              "tag": "img",
+              "img_key": imgKey,
+              "alt": { "content": movie.title, "tag": "plain_text" }
+            });
+          }
+          
+          // Add title and abstract
+          colElements.push({
             "tag": "markdown",
-            "content": "<font color='grey'>" + abstract + "</font>"
+            "content": "**" + movie.title + "**\n⭐️ 评分: " + (movie.rate || '暂无') + (movie.is_new ? ' 🆕' : '')
           });
-        }
-        
-        const colSet: any = {
+          
+          if (abstract) {
+            colElements.push({
+              "tag": "markdown",
+              "content": "<font color='grey'>" + abstract + "</font>"
+            });
+          }
+          
+          return {
+            "tag": "column",
+            "width": "weighted",
+            "weight": 1,
+            "vertical_align": "top",
+            "elements": colElements
+          };
+        });
+
+        elements.push({
           "tag": "column_set",
           "flex_mode": "none",
           "background_style": "default",
-          "columns": [
-            {
-              "tag": "column",
-              "width": "weighted",
-              "weight": 2,
-              "vertical_align": "top",
-              "elements": textElements
-            }
-          ]
-        };
+          "columns": columns
+        });
         
-        if (imgKey) {
-           colSet.columns.unshift({
-              "tag": "column",
-              "width": "weighted",
-              "weight": 1,
-              "vertical_align": "top",
-              "elements": [{
-                "tag": "img",
-                "img_key": imgKey,
-                "alt": { "content": movie.title, "tag": "plain_text" }
-              }]
+        const pairActions: any[] = [];
+        pair.forEach(movie => {
+           pairActions.push({
+             "tag": "button",
+             "text": { "content": "详情", "tag": "plain_text" },
+             "type": "default",
+             "value": { "action": "douban_movie_detail", "id": movie.id, "cover": movie.cover, "title": movie.title }
            });
-        }
-        
-        elements.push(colSet);
+           pairActions.push({
+             "tag": "button",
+             "text": { "content": "搜资源", "tag": "plain_text" },
+             "type": "primary",
+             "value": { "action": "search_douban", "keyword": movie.title }
+           });
+        });
         
         elements.push({
           "tag": "action",
-          "layout": "bisected",
-          "actions": [
-            {
-              "tag": "button",
-              "text": { "content": "ℹ️ 详情", "tag": "plain_text" },
-              "type": "default",
-              "value": { "action": "douban_movie_detail", "id": movie.id, "cover": movie.cover, "title": movie.title }
-            },
-            {
-              "tag": "button",
-              "text": { "content": "🎬 搜资源", "tag": "plain_text" },
-              "type": "primary",
-              "value": { "action": "search_douban", "keyword": movie.title }
-            }
-          ]
+          "actions": pairActions
         });
         
         elements.push({ "tag": "hr" });
