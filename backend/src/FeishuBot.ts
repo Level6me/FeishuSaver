@@ -796,9 +796,15 @@ export function startFeishuBot() {
         return null;
       }
 
-      if (text.startsWith('/search ')) {
-        const keyword = text.slice(8).trim();
-        if (!keyword) return;
+      if (text.startsWith('/search')) {
+        const keyword = text.slice(7).trim();
+        if (!keyword) {
+          client.im.message.reply({
+            path: { message_id: messageId },
+            data: { content: JSON.stringify({ text: "请输入需要搜索的资源名称，例如：/search 庆余年" }), msg_type: 'text' }
+          });
+          return null;
+        }
         
         client.im.message.reply({
           path: { message_id: messageId },
