@@ -663,8 +663,15 @@ export function startFeishuBot() {
       if (data.message.message_type !== 'text') return;
       
       const content = JSON.parse(data.message.content);
-      const text = content.text ? content.text.trim() : '';
+      let text = content.text ? content.text.trim() : '';
       const openId = data.sender?.sender_id?.open_id;
+
+      if (openId && userStates.has(openId) && userStates.get(openId) === 'awaiting_search_keyword') {
+        userStates.delete(openId);
+        if (text && !text.startsWith('/')) {
+          text = '/search ' + text;
+        }
+      }
 
       if (openId && userStates.has(openId)) {
         const state = userStates.get(openId);
@@ -799,9 +806,10 @@ export function startFeishuBot() {
       if (text.startsWith('/search') || text.startsWith('/搜索')) {
         const keyword = text.startsWith('/search') ? text.slice(7).trim() : text.slice(3).trim();
         if (!keyword) {
+          if (openId) userStates.set(openId, 'awaiting_search_keyword');
           client.im.message.reply({
             path: { message_id: messageId },
-            data: { content: JSON.stringify({ text: "请输入需要搜索的资源名称，例如：/search 庆余年 或 /搜索 庆余年" }), msg_type: 'text' }
+            data: { content: JSON.stringify({ text: "🔍 请直接回复需要搜索的资源名称 (例如: 庆余年)：" }), msg_type: 'text' }
           });
           return null;
         }
