@@ -1249,7 +1249,11 @@ export function startFeishuBot() {
               logger.error('Search Douban Error:', e);
            }
         })();
-        return { toast: { type: "info", content: "🔍 正在为您搜索: " + keyword } };
+        const cachedCard = openMessageId ? cardStateCache.get(openMessageId) : undefined;
+        return { 
+           card: cachedCard ? { type: "raw", data: cachedCard } : undefined,
+           toast: { type: "info", content: "🔍 正在为您搜索: " + keyword } 
+        };
       }
 
       if (actionValue.action === 'change_page') {
