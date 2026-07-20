@@ -520,27 +520,22 @@ async function buildDoubanCard(type: string, tag: string, movies: any[], client:
         pair.forEach(movie => {
            detailButtons.push({
              "tag": "button",
-             "text": { "content": "详情", "tag": "plain_text" },
+             "text": { "content": "ℹ️ 详情介绍", "tag": "plain_text" },
              "type": "default",
              "value": { "action": "douban_movie_detail", "id": movie.id, "cover": movie.cover, "title": movie.title }
            });
            searchButtons.push({
              "tag": "button",
-             "text": { "content": "搜索", "tag": "plain_text" },
+             "text": { "content": "🎬 搜索影片", "tag": "plain_text" },
              "type": "primary",
              "value": { "action": "search_douban", "keyword": movie.title }
            });
         });
         
-        const pairActions: any[] = [];
-        for (let j = 0; j < pair.length; j++) {
-           pairActions.push(detailButtons[j]);
-           pairActions.push(searchButtons[j]);
-        }
-        
         elements.push({
           "tag": "action",
-          "actions": pairActions
+          "layout": "bisected",
+          "actions": [...detailButtons, ...searchButtons]
         });
         
         elements.push({ "tag": "hr" });
