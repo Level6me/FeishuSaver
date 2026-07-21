@@ -29,7 +29,6 @@ export class DoubanService {
         "sec-fetch-mode": "cors",
         "sec-fetch-site": "same-origin",
         "x-requested-with": "XMLHttpRequest",
-        cookie: process.env.DOUBAN_COOKIE || "",
         Referer: "https://movie.douban.com/",
         "Referrer-Policy": "unsafe-url",
       })
