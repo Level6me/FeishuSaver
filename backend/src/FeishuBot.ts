@@ -147,6 +147,7 @@ function buildConfigCard() {
   const tianyiPwdConfigured = !!process.env.TIANYI_PASSWORD;
   const pan123AccConfigured = !!process.env.PAN123_ACCOUNT;
   const pan123PwdConfigured = !!process.env.PAN123_PASSWORD;
+  const doubanConfigured = !!process.env.DOUBAN_COOKIE;
   
   return {
     "config": { "update_multi": true },
@@ -229,6 +230,37 @@ function buildConfigCard() {
         ]
       },
       { "tag": "hr" },
+      {
+        "tag": "column_set",
+        "flex_mode": "none",
+        "background_style": "default",
+        "columns": [
+          {
+            "tag": "column",
+            "width": "weighted",
+            "weight": 1,
+            "vertical_align": "center",
+            "elements": [
+              { "tag": "markdown", "content": "**🎬 豆瓣 Cookie**\n状态: " + (doubanConfigured ? "<font color='green'>✅ 已配置</font>" : "<font color='red'>❌ 未配置</font>") }
+            ]
+          },
+          {
+            "tag": "column",
+            "width": "auto",
+            "weight": 1,
+            "vertical_align": "center",
+            "elements": [
+              {
+                "tag": "button",
+                "text": { "content": "配置", "tag": "plain_text" },
+                "type": doubanConfigured ? "default" : "primary",
+                "value": { "action": "set_douban_cookie" }
+              }
+            ]
+          }
+        ]
+      },
+      { "tag": "hr" },
 
       {
         "tag": "column_set",
@@ -300,16 +332,38 @@ async function getDoubanAbstract(subjectId: string): Promise<string> {
 }
 
 async function getDoubanFullDetail(subjectId: string): Promise<any> {
+  let subject = null;
   try {
     const res = await axios.get("https://movie.douban.com/j/subject_abstract?subject_id=" + subjectId, {
       headers: { 'Referer': 'https://movie.douban.com/' },
       timeout: 3000
     });
     if (res.data && res.data.subject) {
-      return res.data.subject;
+      subject = res.data.subject;
     }
   } catch (e) {
     // Ignore error
+  }
+  
+  if (subject) {
+    try {
+      const htmlRes = await axios.get("https://movie.douban.com/subject/" + subjectId + "/", {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+          'Cookie': process.env.DOUBAN_COOKIE || ''
+        },
+        timeout: 3000
+      });
+      const match = htmlRes.data.match(/<span property="v:summary"[^>]*>([\s\S]*?)<\/span>/);
+      if (match && match[1]) {
+        let summary = match[1].replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').trim();
+        summary = summary.replace(/&nbsp;/g, ' ').replace(/&middot;/g, '·').replace(/&#x3000;/g, '  ');
+        subject.plot_summary = summary;
+      }
+    } catch (e) {
+      // Ignore error
+    }
+    return subject;
   }
   return null;
 }
@@ -325,6 +379,9 @@ async function buildDoubanDetailCard(subject: any, client: lark.Client, doubanTa
   if (subject.region) md += `🌍 **地区**: ${subject.region}\n`;
   if (subject.release_year) md += `📅 **年份**: ${subject.release_year}\n`;
   if (subject.duration) md += `⏳ **片长**: ${subject.duration}\n`;
+  if (subject.plot_summary) {
+     md += `\n📖 **影片介绍**: \n${subject.plot_summary}\n`;
+  }
   if (subject.short_comment && subject.short_comment.content) {
      md += `\n💬 **短评**: "${subject.short_comment.content}" —— ${subject.short_comment.author}\n`;
   }
@@ -809,6 +866,9 @@ export function startFeishuBot() {
         if (state === 'quark_cookie') {
           envKey = 'QUARK_COOKIE';
           successMsg = '✅ 夸克 Cookie 已更新保存！';
+        } else if (state === 'douban_cookie') {
+          envKey = 'DOUBAN_COOKIE';
+          successMsg = '✅ 豆瓣 Cookie 已更新保存！';
         } else if (state === 'cloud115_cookie') {
           envKey = 'CLOUD115_COOKIE';
           successMsg = '✅ 115网盘 Cookie 已更新保存！';
@@ -951,6 +1011,7 @@ export function startFeishuBot() {
           const allItems = results.data.flatMap((channel: any) => channel.list || []);
           
           const hasQuark = !!process.env.QUARK_COOKIE;
+          const has115 = !!process.env.CLOUD115_COOKIE;
           const maybeValidItems: any[] = [];
           for (const item of allItems) {
             const quarkLink = item.cloudLinks?.find((link: string) => /https?:\/\/pan\.quark\.cn\/[^\s<>"]+/.test(link));
@@ -966,6 +1027,15 @@ export function startFeishuBot() {
                 });
               }
             }
+            const pan115Link = item.cloudLinks?.find((link: string) => /https?:\/\/(?:115|anxia|115cdn)\.com\/s\/[^\s<>"]+/.test(link));
+            if (pan115Link && has115) {
+                maybeValidItems.push({
+                  ...item,
+                  is115: true,
+                  cloudType: '115网盘',
+                  cloudLinks: [pan115Link]
+                });
+            }
           }
           
           const validItems: any[] = [];
@@ -975,6 +1045,7 @@ export function startFeishuBot() {
           for (let i = 0; i < maybeValidItems.length; i += 10) {
              const chunk = maybeValidItems.slice(i, i + 10);
              const promises = chunk.map(async (item) => {
+                if (item.is115) return { item, isValid: true };
                 const isValid = await service.checkShareValid(item.pwdId);
                 return { item, isValid };
              });
@@ -1098,6 +1169,10 @@ export function startFeishuBot() {
       if (actionValue.action === 'set_quark_cookie') {
         const openId = data.operator?.open_id || data.open_id;
         if (openId) { userStates.set(openId, 'quark_cookie'); return { toast: { type: "info", content: "请在对话框中发送您的夸克 Cookie" } }; }
+      }
+      if (actionValue.action === 'set_douban_cookie') {
+        const openId = data.operator?.open_id || data.open_id;
+        if (openId) { userStates.set(openId, 'douban_cookie'); return { toast: { type: "info", content: "请在对话框中发送您的豆瓣 Cookie" } }; }
       }
       if (actionValue.action === 'set_cloud115_cookie') {
         const openId = data.operator?.open_id || data.open_id;
@@ -1374,6 +1449,7 @@ export function startFeishuBot() {
               const results = await Searcher.searchAll(keyword);
               const allItems = results.data.flatMap((channel: any) => channel.list || []);
               const hasQuark = !!process.env.QUARK_COOKIE;
+              const has115 = !!process.env.CLOUD115_COOKIE;
               const maybeValidItems: any[] = [];
               for (const item of allItems) {
                 const quarkLink = item.cloudLinks?.find((link: string) => /https?:\/\/pan\.quark\.cn\/[^\s<>"]+/.test(link));
@@ -1389,6 +1465,15 @@ export function startFeishuBot() {
                     });
                   }
                 }
+                const pan115Link = item.cloudLinks?.find((link: string) => /https?:\/\/(?:115|anxia|115cdn)\.com\/s\/[^\s<>"]+/.test(link));
+                if (pan115Link && has115) {
+                    maybeValidItems.push({
+                      ...item,
+                      is115: true,
+                      cloudType: '115网盘',
+                      cloudLinks: [pan115Link]
+                    });
+                }
               }
               const validItems: any[] = [];
               const service = new QuarkService();
@@ -1396,6 +1481,7 @@ export function startFeishuBot() {
               for (let i = 0; i < maybeValidItems.length; i += 10) {
                  const chunk = maybeValidItems.slice(i, i + 10);
                  const promises = chunk.map(async (item) => {
+                    if (item.is115) return { item, isValid: true };
                     const isValid = await service.checkShareValid(item.pwdId);
                     return { item, isValid };
                  });
