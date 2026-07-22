@@ -1259,29 +1259,70 @@ export function startFeishuBot() {
       const actionValue = data.action.value;
       const pwdId = actionValue.pwdId;
 
+function sendConfigPromptMessage(client: lark.Client, data: any, promptText: string) {
+  const openMessageId = data.open_message_id || data.context?.open_message_id;
+  const openId = data.operator?.open_id || data.open_id;
+
+  if (openMessageId) {
+    client.im.message.reply({
+      path: { message_id: openMessageId },
+      data: { content: JSON.stringify({ text: promptText }), msg_type: 'text' }
+    }).catch(e => logger.error('Failed to reply config prompt message', e));
+  } else if (openId) {
+    client.im.message.create({
+      params: { receive_id_type: 'open_id' },
+      data: { receive_id: openId, content: JSON.stringify({ text: promptText }), msg_type: 'text' }
+    }).catch(e => logger.error('Failed to create config prompt message', e));
+  }
+}
+
       if (actionValue.action === 'set_quark_cookie') {
         const openId = data.operator?.open_id || data.open_id;
-        if (openId) { userStates.set(openId, 'quark_cookie'); return { toast: { type: "info", content: "请在对话框中发送您的夸克 Cookie" } }; }
+        if (openId) {
+          userStates.set(openId, 'quark_cookie');
+          sendConfigPromptMessage(client, data, "🔑 **请在对话框中发送您的【夸克网盘 Cookie】**\n发送后机器人将自动保存更新。");
+          return { toast: { type: "info", content: "已发送配置提示，请回复 Cookie" } };
+        }
       }
       if (actionValue.action === 'set_douban_cookie') {
         const openId = data.operator?.open_id || data.open_id;
-        if (openId) { userStates.set(openId, 'douban_cookie'); return { toast: { type: "info", content: "请在对话框中发送您的豆瓣 Cookie" } }; }
+        if (openId) {
+          userStates.set(openId, 'douban_cookie');
+          sendConfigPromptMessage(client, data, "🔑 **请在对话框中发送您的【豆瓣 Cookie】**\n发送后机器人将自动保存更新。");
+          return { toast: { type: "info", content: "已发送配置提示，请回复 Cookie" } };
+        }
       }
       if (actionValue.action === 'set_cloud115_cookie') {
         const openId = data.operator?.open_id || data.open_id;
-        if (openId) { userStates.set(openId, 'cloud115_cookie'); return { toast: { type: "info", content: "请在对话框中发送您的 115网盘 Cookie" } }; }
+        if (openId) {
+          userStates.set(openId, 'cloud115_cookie');
+          sendConfigPromptMessage(client, data, "🔑 **请在对话框中发送您的【115网盘 Cookie】**\n发送后机器人将自动保存更新。");
+          return { toast: { type: "info", content: "已发送配置提示，请回复 Cookie" } };
+        }
       }
       if (actionValue.action === 'set_aliyun_cookie') {
         const openId = data.operator?.open_id || data.open_id;
-        if (openId) { userStates.set(openId, 'aliyun_cookie'); return { toast: { type: "info", content: "请在对话框中发送您的阿里云盘 Cookie" } }; }
+        if (openId) {
+          userStates.set(openId, 'aliyun_cookie');
+          sendConfigPromptMessage(client, data, "🔑 **请在对话框中发送您的【阿里云盘 Cookie】**\n发送后机器人将自动保存更新。");
+          return { toast: { type: "info", content: "已发送配置提示，请回复 Cookie" } };
+        }
       }
       if (actionValue.action === 'set_tianyi_auth') {
         const openId = data.operator?.open_id || data.open_id;
-        if (openId) { userStates.set(openId, 'tianyi_auth'); return { toast: { type: "info", content: "请回复格式: 账号,密码 (例如: username,123456)" } }; }
+        if (openId) {
+          userStates.set(openId, 'tianyi_auth');
+          sendConfigPromptMessage(client, data, "🔐 **请在对话框中回复天翼云盘凭证**\n格式为：`账号,密码`（示例：`13800000000,123456`）");
+          return { toast: { type: "info", content: "已发送配置提示，请回复账号密码" } };
+        }
       }
       if (actionValue.action === 'set_pan123_auth') {
         const openId = data.operator?.open_id || data.open_id;
-        if (openId) { userStates.set(openId, 'pan123_auth'); return { toast: { type: "info", content: "请回复格式: 账号,密码 (例如: username,123456)" } }; }
+        if (openId) {
+          userStates.set(openId, 'pan123_auth');
+          sendConfigPromptMessage(client, data, "🔐 **请在对话框中回复123网盘凭证**\n格式为：`账号,密码`（示例：`13800000000,123456`）");
+          return { toast: { type: "info", content: "已发送配置提示，请回复账号密码" } };
+        }
       }
 
       if (actionValue.action === 'view_quark_dir') {
@@ -1409,7 +1450,37 @@ export function startFeishuBot() {
         const openId = data.operator?.open_id || data.open_id;
         if (openId) {
           userStates.set(openId, 'add_tele_channel');
-          return { toast: { type: "info", content: "请发送频道信息（支持多行名称,ID / TG链接 / JSON）" } };
+          const guideMessage = 
+`📥 **请在对话框中发送频道信息（智能识别）**
+
+机器人已进入“频道新增/批量导入”接收状态，请直接回复消息，支持以下任意格式：
+
+1️⃣ **多行文本格式**（每行格式：\`频道名,频道ID\`）：
+\`\`\`text
+115影视资源,guaguale115
+夸克电影,Quark_Movies
+阿里云盘,zaihuayun
+\`\`\`
+
+2️⃣ **Telegram 链接 / @用户名格式**：
+\`\`\`text
+https://t.me/s/guaguale115
+@Quark_Movies
+高清影视频道, https://t.me/hao115
+\`\`\`
+
+3️⃣ **JSON 数组文本格式**：
+\`\`\`json
+[
+  { "name": "115影视资源", "id": "guaguale115" },
+  { "name": "夸克电影", "id": "Quark_Movies" }
+]
+\`\`\`
+
+💡 *发送后机器人将自动解析导入、去重并更新订阅列表卡片！*`;
+
+          sendConfigPromptMessage(client, data, guideMessage);
+          return { toast: { type: "info", content: "已发送详细导入指南，请回复频道信息" } };
         }
       }
       if (actionValue.action === 'delete_tele_channel_by_id') {
