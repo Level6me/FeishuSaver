@@ -36,6 +36,87 @@ function getChannelsList() {
   return config.telegram.channels;
 }
 
+function cleanTelegramId(str: string): string {
+  if (!str) return '';
+  let s = str.trim();
+  const urlMatch = s.match(/https?:\/\/t\.me\/(?:s\/)?([a-zA-Z0-9_]+)/i) || s.match(/t\.me\/(?:s\/)?([a-zA-Z0-9_]+)/i);
+  if (urlMatch && urlMatch[1]) {
+    return urlMatch[1];
+  }
+  if (s.startsWith('@')) {
+    s = s.slice(1);
+  }
+  if (/^[a-zA-Z0-9_]{3,}$/.test(s)) {
+    return s;
+  }
+  return '';
+}
+
+function parseChannelBatchInput(text: string): { name: string; id: string }[] {
+  const results: { name: string; id: string }[] = [];
+  const trimmed = text.trim();
+
+  if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const items = Array.isArray(parsed) ? parsed : (parsed.channels || parsed.items || []);
+      if (Array.isArray(items)) {
+        for (const item of items) {
+          if (typeof item === 'string') {
+            const cleanId = cleanTelegramId(item);
+            if (cleanId) results.push({ name: cleanId, id: cleanId });
+          } else if (item && typeof item === 'object') {
+            const rawId = item.id || item.channelId || item.channel_id || item.username;
+            const rawName = item.name || item.title || item.channelName || rawId;
+            const cleanId = cleanTelegramId(String(rawId || ''));
+            if (cleanId) {
+              results.push({ name: String(rawName || cleanId).trim(), id: cleanId });
+            }
+          }
+        }
+        if (results.length > 0) return results;
+      }
+    } catch (e) {}
+  }
+
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  for (const line of lines) {
+    const parts = line.split(/,|，|\t|\|/).map(p => p.trim()).filter(p => p.length > 0);
+    if (parts.length >= 2) {
+      const p1 = parts[0];
+      const p2 = parts[1];
+      const id1 = cleanTelegramId(p1);
+      const id2 = cleanTelegramId(p2);
+
+      if (id2) {
+        results.push({ name: p1 || id2, id: id2 });
+      } else if (id1) {
+        results.push({ name: p2 || id1, id: id1 });
+      }
+    } else {
+      const spaceParts = line.split(/\s+/).map(p => p.trim()).filter(p => p.length > 0);
+      if (spaceParts.length >= 2) {
+        const id2 = cleanTelegramId(spaceParts[1]);
+        const id1 = cleanTelegramId(spaceParts[0]);
+        if (id2) {
+          results.push({ name: spaceParts[0], id: id2 });
+          continue;
+        } else if (id1) {
+          results.push({ name: spaceParts[1], id: id1 });
+          continue;
+        }
+      }
+
+      const cleanId = cleanTelegramId(line);
+      if (cleanId) {
+        results.push({ name: cleanId, id: cleanId });
+      }
+    }
+  }
+
+  return results;
+}
+
 function buildChannelManageCard(page = 0) {
   const channels = getChannelsList();
   const PAGE_SIZE = 15;
@@ -116,7 +197,7 @@ function buildChannelManageCard(page = 0) {
     "actions": [
       {
         "tag": "button",
-        "text": { "content": "➕ 新增频道", "tag": "plain_text" },
+        "text": { "content": "➕ 新增/批量导入频道", "tag": "plain_text" },
         "type": "primary",
         "value": { "action": "add_tele_channel" }
       },
@@ -927,20 +1008,32 @@ export function startFeishuBot() {
             }
           } else {
             if (state === 'add_tele_channel') {
-              const parts = text.split(/,|，/);
-              if (parts.length >= 2) {
-                const channels = getChannelsList();
-                const newId = parts[1].trim();
-                const newName = parts[0].trim();
-                if (channels.some((c: any) => c.id === newId)) {
-                  userStates.delete(openId);
-                  return client.im.message.reply({ path: { message_id: messageId }, data: { content: JSON.stringify({ text: `❌ 频道添加失败，频道ID ${newId} 已存在！` }), msg_type: 'text' }});
-                }
-                channels.push({ name: newName, id: newId });
-                envValue = JSON.stringify(channels);
-              } else {
-                return client.im.message.reply({ path: { message_id: messageId }, data: { content: JSON.stringify({ text: "❌ 格式错误，请使用: 频道名,频道ID" }), msg_type: 'text' }});
+              const parsedItems = parseChannelBatchInput(text);
+              if (parsedItems.length === 0) {
+                userStates.delete(openId);
+                return client.im.message.reply({ path: { message_id: messageId }, data: { content: JSON.stringify({ text: "❌ 格式识别失败！支持格式：\n1. 单条/多行：频道名,频道ID\n2. TG链接/用户名：https://t.me/s/id 或 @id\n3. JSON数组：[{\"name\":\"..\",\"id\":\"..\"}]" }), msg_type: 'text' }});
               }
+
+              const channels = getChannelsList();
+              let addedCount = 0;
+              let skippedCount = 0;
+
+              for (const item of parsedItems) {
+                if (channels.some((c: any) => c.id === item.id)) {
+                  skippedCount++;
+                } else {
+                  channels.push(item);
+                  addedCount++;
+                }
+              }
+
+              if (addedCount === 0) {
+                userStates.delete(openId);
+                return client.im.message.reply({ path: { message_id: messageId }, data: { content: JSON.stringify({ text: `⚠️ 未导入新频道：所解析的 ${parsedItems.length} 个频道均已存在于订阅列表中！` }), msg_type: 'text' }});
+              }
+
+              envValue = JSON.stringify(channels);
+              successMsg = `✅ 批量导入成功！成功添加 ${addedCount} 个频道${skippedCount > 0 ? `（${skippedCount} 个已存在自动跳过）` : ''}`;
             }
             
             process.env[envKey] = envValue;
@@ -1316,7 +1409,7 @@ export function startFeishuBot() {
         const openId = data.operator?.open_id || data.open_id;
         if (openId) {
           userStates.set(openId, 'add_tele_channel');
-          return { toast: { type: "info", content: "请在对话框发送频道信息 (格式: 频道名称,频道ID)" } };
+          return { toast: { type: "info", content: "请发送频道信息（支持多行名称,ID / TG链接 / JSON）" } };
         }
       }
       if (actionValue.action === 'delete_tele_channel_by_id') {
