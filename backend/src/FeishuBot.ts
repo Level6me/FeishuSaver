@@ -1259,69 +1259,105 @@ export function startFeishuBot() {
       const actionValue = data.action.value;
       const pwdId = actionValue.pwdId;
 
-function sendConfigPromptMessage(client: lark.Client, data: any, promptText: string) {
+function sendConfigPromptCard(client: lark.Client, data: any, cardObj: any) {
   const openMessageId = data.open_message_id || data.context?.open_message_id;
   const openId = data.operator?.open_id || data.open_id;
+  const contentStr = JSON.stringify(cardObj);
 
   if (openMessageId) {
     client.im.message.reply({
       path: { message_id: openMessageId },
-      data: { content: JSON.stringify({ text: promptText }), msg_type: 'text' }
-    }).catch(e => logger.error('Failed to reply config prompt message', e));
+      data: { content: contentStr, msg_type: 'interactive' }
+    }).catch(e => logger.error('Failed to reply config prompt card', e));
   } else if (openId) {
     client.im.message.create({
       params: { receive_id_type: 'open_id' },
-      data: { receive_id: openId, content: JSON.stringify({ text: promptText }), msg_type: 'text' }
-    }).catch(e => logger.error('Failed to create config prompt message', e));
+      data: { receive_id: openId, content: contentStr, msg_type: 'interactive' }
+    }).catch(e => logger.error('Failed to create config prompt card', e));
   }
+}
+
+function buildCookiePromptCard(title: string, desc: string, example?: string) {
+  const elements: any[] = [
+    {
+      "tag": "markdown",
+      "content": desc
+    }
+  ];
+  if (example) {
+    elements.push({ "tag": "hr" });
+    elements.push({
+      "tag": "markdown",
+      "content": `📝 **格式示例**：\n\`\`\`text\n${example}\n\`\`\``
+    });
+  }
+  elements.push({ "tag": "hr" });
+  elements.push({
+    "tag": "note",
+    "elements": [
+      {
+        "tag": "plain_text",
+        "content": "💡 请在下方聊天框直接回复发送，系统将自动更新并保存至配置文件中。"
+      }
+    ]
+  });
+
+  return {
+    "config": { "update_multi": true },
+    "header": {
+      "title": { "tag": "plain_text", "content": title },
+      "template": "turquoise"
+    },
+    "elements": elements
+  };
 }
 
       if (actionValue.action === 'set_quark_cookie') {
         const openId = data.operator?.open_id || data.open_id;
         if (openId) {
           userStates.set(openId, 'quark_cookie');
-          sendConfigPromptMessage(client, data, "🔑 **请在对话框中发送您的【夸克网盘 Cookie】**\n发送后机器人将自动保存更新。");
-          return { toast: { type: "info", content: "已发送配置提示，请回复 Cookie" } };
+          sendConfigPromptCard(client, data, buildCookiePromptCard("🔑 夸克网盘 Cookie 配置", "请在下方聊天框中直接发送您的 **【夸克网盘 Cookie】** 字符串。"));
+          return { toast: { type: "info", content: "已发送配置卡片，请回复 Cookie" } };
         }
       }
       if (actionValue.action === 'set_douban_cookie') {
         const openId = data.operator?.open_id || data.open_id;
         if (openId) {
           userStates.set(openId, 'douban_cookie');
-          sendConfigPromptMessage(client, data, "🔑 **请在对话框中发送您的【豆瓣 Cookie】**\n发送后机器人将自动保存更新。");
-          return { toast: { type: "info", content: "已发送配置提示，请回复 Cookie" } };
+          sendConfigPromptCard(client, data, buildCookiePromptCard("🔑 豆瓣 Cookie 配置", "请在下方聊天框中直接发送您的 **【豆瓣 Cookie】** 字符串。"));
+          return { toast: { type: "info", content: "已发送配置卡片，请回复 Cookie" } };
         }
       }
       if (actionValue.action === 'set_cloud115_cookie') {
         const openId = data.operator?.open_id || data.open_id;
         if (openId) {
           userStates.set(openId, 'cloud115_cookie');
-          sendConfigPromptMessage(client, data, "🔑 **请在对话框中发送您的【115网盘 Cookie】**\n发送后机器人将自动保存更新。");
-          return { toast: { type: "info", content: "已发送配置提示，请回复 Cookie" } };
+          sendConfigPromptCard(client, data, buildCookiePromptCard("🔑 115网盘 Cookie 配置", "请在下方聊天框中直接发送您的 **【115网盘 Cookie】** 字符串。"));
+          return { toast: { type: "info", content: "已发送配置卡片，请回复 Cookie" } };
         }
       }
       if (actionValue.action === 'set_aliyun_cookie') {
         const openId = data.operator?.open_id || data.open_id;
         if (openId) {
           userStates.set(openId, 'aliyun_cookie');
-          sendConfigPromptMessage(client, data, "🔑 **请在对话框中发送您的【阿里云盘 Cookie】**\n发送后机器人将自动保存更新。");
-          return { toast: { type: "info", content: "已发送配置提示，请回复 Cookie" } };
+          sendConfigPromptCard(client, data, buildCookiePromptCard("🔑 阿里云盘 Cookie 配置", "请在下方聊天框中直接发送您的 **【阿里云盘 Cookie】** 字符串。"));
+          return { toast: { type: "info", content: "已发送配置卡片，请回复 Cookie" } };
         }
       }
       if (actionValue.action === 'set_tianyi_auth') {
         const openId = data.operator?.open_id || data.open_id;
         if (openId) {
           userStates.set(openId, 'tianyi_auth');
-          sendConfigPromptMessage(client, data, "🔐 **请在对话框中回复天翼云盘凭证**\n格式为：`账号,密码`（示例：`13800000000,123456`）");
-          return { toast: { type: "info", content: "已发送配置提示，请回复账号密码" } };
+          sendConfigPromptCard(client, data, buildCookiePromptCard("🔐 天翼云盘凭证配置", "请在下方聊天框中回复您的 **天翼云盘账号和密码**。", "13800000000,123456"));
+          return { toast: { type: "info", content: "已发送配置卡片，请回复账号密码" } };
         }
       }
       if (actionValue.action === 'set_pan123_auth') {
         const openId = data.operator?.open_id || data.open_id;
         if (openId) {
           userStates.set(openId, 'pan123_auth');
-          sendConfigPromptMessage(client, data, "🔐 **请在对话框中回复123网盘凭证**\n格式为：`账号,密码`（示例：`13800000000,123456`）");
-          return { toast: { type: "info", content: "已发送配置提示，请回复账号密码" } };
+          sendConfigPromptCard(client, data, buildCookiePromptCard("🔐 123网盘凭证配置", "请在下方聊天框中回复您的 **123网盘账号和密码**。", "13800000000,123456"));
+          return { toast: { type: "info", content: "已发送配置卡片，请回复账号密码" } };
         }
       }
 
@@ -1450,37 +1486,45 @@ function sendConfigPromptMessage(client: lark.Client, data: any, promptText: str
         const openId = data.operator?.open_id || data.open_id;
         if (openId) {
           userStates.set(openId, 'add_tele_channel');
-          const guideMessage = 
-`📥 **请在对话框中发送频道信息（智能识别）**
+          const channelGuideCard = {
+            "config": { "update_multi": true },
+            "header": {
+              "title": { "tag": "plain_text", "content": "📥 TG 频道批量导入指南" },
+              "template": "blue"
+            },
+            "elements": [
+              {
+                "tag": "markdown",
+                "content": "机器人已进入**“频道新增 / 批量导入”**接收状态！请直接在下方聊天框中回复消息，支持以下任意格式："
+              },
+              { "tag": "hr" },
+              {
+                "tag": "markdown",
+                "content": "1️⃣ **多行文本格式**（格式：`频道名,频道ID`）：\n```text\n115影视资源,guaguale115\n夸克电影,Quark_Movies\n阿里云盘,zaihuayun\n```"
+              },
+              {
+                "tag": "markdown",
+                "content": "2️⃣ **Telegram 链接 / @用户名格式**：\n```text\nhttps://t.me/s/guaguale115\n@Quark_Movies\n高清影视频道, https://t.me/hao115\n```"
+              },
+              {
+                "tag": "markdown",
+                "content": "3️⃣ **JSON 数组文本格式**：\n```json\n[\n  { \"name\": \"115影视资源\", \"id\": \"guaguale115\" },\n  { \"name\": \"夸克电影\", \"id\": \"Quark_Movies\" }\n]\n```"
+              },
+              { "tag": "hr" },
+              {
+                "tag": "note",
+                "elements": [
+                  {
+                    "tag": "plain_text",
+                    "content": "💡 发送消息后机器人将自动解析导入、自动去重并更新订阅列表卡片！"
+                  }
+                ]
+              }
+            ]
+          };
 
-机器人已进入“频道新增/批量导入”接收状态，请直接回复消息，支持以下任意格式：
-
-1️⃣ **多行文本格式**（每行格式：\`频道名,频道ID\`）：
-\`\`\`text
-115影视资源,guaguale115
-夸克电影,Quark_Movies
-阿里云盘,zaihuayun
-\`\`\`
-
-2️⃣ **Telegram 链接 / @用户名格式**：
-\`\`\`text
-https://t.me/s/guaguale115
-@Quark_Movies
-高清影视频道, https://t.me/hao115
-\`\`\`
-
-3️⃣ **JSON 数组文本格式**：
-\`\`\`json
-[
-  { "name": "115影视资源", "id": "guaguale115" },
-  { "name": "夸克电影", "id": "Quark_Movies" }
-]
-\`\`\`
-
-💡 *发送后机器人将自动解析导入、去重并更新订阅列表卡片！*`;
-
-          sendConfigPromptMessage(client, data, guideMessage);
-          return { toast: { type: "info", content: "已发送详细导入指南，请回复频道信息" } };
+          sendConfigPromptCard(client, data, channelGuideCard);
+          return { toast: { type: "info", content: "已发送详细导入指南卡片，请回复频道信息" } };
         }
       }
       if (actionValue.action === 'delete_tele_channel_by_id') {
