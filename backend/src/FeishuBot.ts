@@ -220,6 +220,119 @@ function buildChannelManageCard(page = 0) {
   };
 }
 
+function buildWelcomeGuideCard() {
+  const quarkConfigured = !!process.env.QUARK_COOKIE;
+  const cloud115Configured = !!process.env.CLOUD115_COOKIE;
+  const aliyunConfigured = !!process.env.ALIYUN_COOKIE;
+  const doubanConfigured = !!process.env.DOUBAN_COOKIE;
+  const channelsCount = getChannelsList().length;
+
+  return {
+    "config": { "update_multi": true },
+    "header": {
+      "title": { "tag": "plain_text", "content": "🎉 欢迎使用 FeishuSaver 智能网盘转存机器人" },
+      "template": "blue"
+    },
+    "elements": [
+      {
+        "tag": "markdown",
+        "content": "👋 欢迎使用 **FeishuSaver**！本机器人支持在飞书中一键检索全网 Telegram 影视资源，并快速转存至您的夸克网盘、115网盘、阿里云盘等。"
+      },
+      { "tag": "hr" },
+      {
+        "tag": "markdown",
+        "content": "⚙️ **首次使用配置指南（重要）**\n为了确保搜索与转存功能正常运行，建议您优先完成以下配置："
+      },
+      {
+        "tag": "column_set",
+        "flex_mode": "none",
+        "background_style": "default",
+        "columns": [
+          {
+            "tag": "column",
+            "width": "weighted",
+            "weight": 1,
+            "vertical_align": "top",
+            "elements": [
+              {
+                "tag": "markdown",
+                "content": `1️⃣ **网盘 Cookie 配置**\n• 夸克网盘: ${quarkConfigured ? "<font color='green'>✅ 已配置</font>" : "<font color='red'>❌ 未配置</font>"}\n• 115网盘: ${cloud115Configured ? "<font color='green'>✅ 已配置</font>" : "<font color='red'>❌ 未配置</font>"}\n• 阿里云盘: ${aliyunConfigured ? "<font color='green'>✅ 已配置</font>" : "<font color='red'>❌ 未配置</font>"}\n*需至少配置一个网盘凭证以执行文件转存。*`
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tag": "column_set",
+        "flex_mode": "none",
+        "background_style": "default",
+        "columns": [
+          {
+            "tag": "column",
+            "width": "weighted",
+            "weight": 1,
+            "vertical_align": "top",
+            "elements": [
+              {
+                "tag": "markdown",
+                "content": `2️⃣ **TG 频道订阅配置**\n• 当前已订阅: **${channelsCount}** 个频道\n*预置常用影视资源频道，支持多格式批量导入或自由删减。*`
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "tag": "column_set",
+        "flex_mode": "none",
+        "background_style": "default",
+        "columns": [
+          {
+            "tag": "column",
+            "width": "weighted",
+            "weight": 1,
+            "vertical_align": "top",
+            "elements": [
+              {
+                "tag": "markdown",
+                "content": `3️⃣ **豆瓣 Cookie 配置（可选）**\n• 豆瓣状态: ${doubanConfigured ? "<font color='green'>✅ 已配置</font>" : "<font color='grey'>⚪ 未配置</font>"}\n*配置后可在电影详情页展示完整的“📖 影片介绍”摘要。*`
+              }
+            ]
+          }
+        ]
+      },
+      { "tag": "hr" },
+      {
+        "tag": "markdown",
+        "content": "🛠️ **常用功能与指令清单**\n\n🔍 `/search <关键字>` 或 `/搜索 <关键字>`\n> 搜索 Telegram 全网资源（支持在线卡片翻页与一键转存）\n\n🔥 `/hot` 或 `/排行`\n> 查看豆瓣最新热门电影榜单与详细简介\n\n⚙️ `/config` 或 `/配置`\n> 打开系统配置面板（管理网盘Cookie凭证与频道订阅）\n\n📥 `/transfer-quark <分享ID> [提取码]`\n> 根据夸克分享 ID 直接发起目录提取与转存"
+      },
+      { "tag": "hr" },
+      {
+        "tag": "action",
+        "actions": [
+          {
+            "tag": "button",
+            "text": { "content": "⚙️ 打开配置面板", "tag": "plain_text" },
+            "type": "primary",
+            "value": { "action": "back_to_main_config" }
+          },
+          {
+            "tag": "button",
+            "text": { "content": "🔥 查看热门电影", "tag": "plain_text" },
+            "type": "default",
+            "value": { "action": "view_hot_from_welcome" }
+          },
+          {
+            "tag": "button",
+            "text": { "content": "🔍 快捷搜索", "tag": "plain_text" },
+            "type": "default",
+            "value": { "action": "start_search_prompt" }
+          }
+        ]
+      }
+    ]
+  };
+}
+
 function buildConfigCard() {
   const quarkConfigured = !!process.env.QUARK_COOKIE;
   const cloud115Configured = !!process.env.CLOUD115_COOKIE;
@@ -383,6 +496,17 @@ function buildConfigCard() {
       {
         "tag": "markdown",
         "content": "💡 **提示:** 点击配置后，请直接在聊天框内回复。"
+      },
+      {
+        "tag": "action",
+        "actions": [
+          {
+            "tag": "button",
+            "text": { "content": "🎉 欢迎与使用指南", "tag": "plain_text" },
+            "type": "default",
+            "value": { "action": "view_welcome_guide" }
+          }
+        ]
       }
     ]
   };
@@ -916,6 +1040,15 @@ export function startFeishuBot() {
   const wsClient = new lark.WSClient({ appId, appSecret });
 
   const eventDispatcher = new lark.EventDispatcher({}).register({
+    'im.chat.member.bot.added_v1': async (data: any) => {
+      const chatId = data.chat_id;
+      if (chatId) {
+        client.im.message.create({
+          params: { receive_id_type: 'chat_id' },
+          data: { receive_id: chatId, content: JSON.stringify(buildWelcomeGuideCard()), msg_type: 'interactive' }
+        }).catch(e => logger.error('Failed to send welcome guide on bot added', e));
+      }
+    },
     'im.message.receive_v1': async (data) => {
       const chatId = data.message.chat_id;
       const messageId = data.message.message_id;
@@ -1074,6 +1207,14 @@ export function startFeishuBot() {
           }
           return null;
         }
+      }
+
+      if (text === '/start' || text === '/help' || text === '/guide' || text === '/欢迎' || text === '/帮助') {
+        client.im.message.reply({
+          path: { message_id: messageId },
+          data: { content: JSON.stringify(buildWelcomeGuideCard()), msg_type: 'interactive' }
+        });
+        return null;
       }
 
       if (text === '/config' || text === '/配置') {
@@ -1250,7 +1391,7 @@ export function startFeishuBot() {
       } else {
           await client.im.message.reply({
              path: { message_id: messageId },
-             data: { content: JSON.stringify({ text: `🤖 欢迎使用 FeishuSaver Bot!\n支持的命令：\n/search 或 /搜索 <关键字>\n/hot 或 /排行\n/config 或 /配置\n/transfer-quark <分享ID> [提取码]` }), msg_type: 'text' }
+             data: { content: JSON.stringify(buildWelcomeGuideCard()), msg_type: 'interactive' }
            });
       }
     },
@@ -1481,6 +1622,33 @@ function buildCookiePromptCard(title: string, desc: string, example?: string) {
       }
       if (actionValue.action === 'back_to_main_config') {
         return { card: { type: "raw", data: buildConfigCard() } };
+      }
+      if (actionValue.action === 'view_welcome_guide') {
+        return { card: { type: "raw", data: buildWelcomeGuideCard() } };
+      }
+      if (actionValue.action === 'start_search_prompt') {
+        const openId = data.operator?.open_id || data.open_id;
+        if (openId) userStates.set(openId, 'awaiting_search_keyword');
+        return { toast: { type: "info", content: "请在对话框中输入要搜索的关键词" } };
+      }
+      if (actionValue.action === 'view_hot_from_welcome') {
+        const openMessageId = data.open_message_id || data.context?.open_message_id;
+        (async () => {
+          try {
+            const ds = container.get<DoubanService>(TYPES.DoubanService);
+            const res = await ds.getHotList({ type: "movie", tag: "热门", page_limit: "10", page_start: "0" });
+            const cardJson = await buildDoubanCard("movie", "热门", res.data || [], client);
+            if (openMessageId) {
+              await client.im.message.reply({
+                path: { message_id: openMessageId },
+                data: { content: JSON.stringify(cardJson), msg_type: 'interactive' }
+              });
+            }
+          } catch(e) {
+            logger.error('Douban Hot Error:', e);
+          }
+        })();
+        return { toast: { type: "info", content: "正在拉取豆瓣热门榜单..." } };
       }
       if (actionValue.action === 'add_tele_channel') {
         const openId = data.operator?.open_id || data.open_id;
