@@ -3,7 +3,7 @@ module.exports = {
     {
       name: "feishusaver-bot",
       script: "./backend/dist/bot.js",
-      cwd: "/home/ubuntu/FeishuSaver",
+      cwd: __dirname,
       watch: false,
       env: {
         NODE_ENV: "production"
