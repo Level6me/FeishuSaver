@@ -1063,6 +1063,7 @@ export function startFeishuBot() {
       
       const content = JSON.parse(data.message.content);
       let text = content.text ? content.text.trim() : '';
+      text = text.replace(/<at\s+user_id="[^"]*">[^<]*<\/at>/gi, '').replace(/^@\S+\s*/g, '').trim();
       const openId = data.sender?.sender_id?.open_id;
 
       if (openId && userStates.has(openId) && userStates.get(openId) === 'awaiting_search_keyword') {
