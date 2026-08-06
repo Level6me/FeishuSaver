@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { BaseController } from "./BaseController";
-import { ICloudStorageService } from "@/types/services";
+import { ICloudStorageService } from "../types/services";
 
 export abstract class BaseCloudController extends BaseController {
   constructor(protected cloudService: ICloudStorageService) {

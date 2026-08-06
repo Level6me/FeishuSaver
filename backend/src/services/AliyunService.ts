@@ -3,7 +3,7 @@ import { createAxiosInstance } from "../utils/axiosInstance";
 import { ShareInfoResponse, FolderListResponse, SaveFileParams } from "../types/cloud";
 import { injectable } from "inversify";
 import { Request } from "express";
-import { ICloudStorageService } from "@/types/services";
+import { ICloudStorageService } from "../types/services";
 import { logger } from "../utils/logger";
 
 @injectable()

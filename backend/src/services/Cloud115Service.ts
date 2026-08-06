@@ -4,7 +4,7 @@ import { ShareInfoResponse, FolderListResponse, SaveFileParams } from "../types/
 import { injectable } from "inversify";
 import { Request } from "express";
 import UserSetting from "../models/UserSetting";
-import { ICloudStorageService } from "@/types/services";
+import { ICloudStorageService } from "../types/services";
 import { logger } from "../utils/logger";
 
 interface Cloud115ListItem {

@@ -303,7 +303,7 @@ function buildWelcomeGuideCard() {
       { "tag": "hr" },
       {
         "tag": "markdown",
-        "content": "🛠️ **常用功能与指令清单**\n\n🔍 `/search <关键字>` 或 `/搜索 <关键字>`\n> 搜索 Telegram 全网资源（支持在线卡片翻页与一键转存）\n\n🔥 `/hot` 或 `/排行`\n> 查看豆瓣最新热门电影榜单与详细简介\n\n⚙️ `/config` 或 `/配置`\n> 打开系统配置面板（管理网盘Cookie凭证与频道订阅）\n\n📥 `/transfer-quark <分享ID> [提取码]`\n> 根据夸克分享 ID 直接发起目录提取与转存"
+        "content": "🛠️ **常用功能与指令清单**\n\n🔍 **直接发送关键词**（例如回复 `庆余年`）\n> 搜索 Telegram 全网资源（支持在线卡片翻页与一键转存）\n\n🔥 `/hot` 或 `/排行`\n> 查看豆瓣最新热门电影榜单与详细简介\n\n⚙️ `/config` 或 `/配置`\n> 打开系统配置面板（管理网盘Cookie凭证与频道订阅）\n\n📥 `/transfer-quark <分享ID> [提取码]`\n> 根据夸克分享 ID 直接发起目录提取与转存"
       },
       { "tag": "hr" },
       {
@@ -1225,102 +1225,7 @@ export function startFeishuBot() {
         return null;
       }
 
-      if (text.startsWith('/search') || text.startsWith('/搜索')) {
-        const keyword = text.startsWith('/search') ? text.slice(7).trim() : text.slice(3).trim();
-        if (!keyword) {
-          if (openId) userStates.set(openId, 'awaiting_search_keyword');
-          client.im.message.reply({
-            path: { message_id: messageId },
-            data: { content: JSON.stringify({ text: "🔍 请直接回复需要搜索的资源名称 (例如: 庆余年)：" }), msg_type: 'text' }
-          });
-          return null;
-        }
-        
-        client.im.message.reply({
-          path: { message_id: messageId },
-          data: { content: JSON.stringify({ text: `⏳ 正在搜索: ${keyword}...` }), msg_type: 'text' }
-        });
-
-        Searcher.searchAll(keyword).then(async (results) => {
-          const allItems = results.data.flatMap((channel: any) => channel.list || []);
-          
-          const hasQuark = !!process.env.QUARK_COOKIE;
-          const has115 = !!process.env.CLOUD115_COOKIE;
-          const maybeValidItems: any[] = [];
-          for (const item of allItems) {
-            const quarkLink = item.cloudLinks?.find((link: string) => /https?:\/\/pan\.quark\.cn\/[^\s<>"]+/.test(link));
-            if (quarkLink && hasQuark) {
-              const match = quarkLink.match(/\/s\/([a-zA-Z0-9]+)/);
-              const pwdId = match ? match[1] : item.messageId;
-              if (pwdId) {
-                maybeValidItems.push({
-                  ...item,
-                  pwdId,
-                  cloudType: 'quark',
-                  cloudLinks: [quarkLink]
-                });
-              }
-            }
-            const pan115Link = item.cloudLinks?.find((link: string) => /https?:\/\/(?:115|anxia|115cdn)\.com\/s\/[^\s<>"]+/.test(link));
-            if (pan115Link && has115) {
-                maybeValidItems.push({
-                  ...item,
-                  is115: true,
-                  cloudType: '115网盘',
-                  cloudLinks: [pan115Link]
-                });
-            }
-          }
-          
-          const validItems: any[] = [];
-          const service = new QuarkService();
-          service.setCookieString(process.env.QUARK_COOKIE || "");
-          
-          for (let i = 0; i < maybeValidItems.length; i += 10) {
-             const chunk = maybeValidItems.slice(i, i + 10);
-             const promises = chunk.map(async (item) => {
-                if (item.is115) return { item, isValid: true };
-                const isValid = await service.checkShareValid(item.pwdId);
-                return { item, isValid };
-             });
-             const res = await Promise.all(promises);
-             validItems.push(...res.filter(r => r.isValid).map(r => r.item));
-          }
-          
-          // Sort items by title matching relevance with normalization
-          const normalizeText = (text: string): string => {
-            if (!text) return '';
-            return text.toLowerCase().replace(/[\u00b7\u2022\u2027\u30fb\.\s\-\_]/g, '');
-          };
-          const normalizedTerms = keyword 
-            ? keyword.split(/\s+/).map((t: string) => normalizeText(t)).filter((t: string) => t.length > 0) 
-            : [];
-          validItems.sort((a: any, b: any) => {
-            const aTitleMatch = normalizedTerms.every((term: string) => normalizeText(a.title || '').includes(term));
-            const bTitleMatch = normalizedTerms.every((term: string) => normalizeText(b.title || '').includes(term));
-            if (aTitleMatch && !bTitleMatch) return -1;
-            if (!aTitleMatch && bTitleMatch) return 1;
-            return 0;
-          });
-          
-          const searchId = messageId;
-          searchCache.set(searchId, { keyword, items: validItems });
-          
-          const cardJson = await buildSearchCard(searchId, 1, client);
-
-          await client.im.message.reply({
-            path: { message_id: messageId },
-            data: { content: JSON.stringify(cardJson), msg_type: 'interactive' }
-          });
-        }).catch(async (error) => {
-          await client.im.message.reply({
-            path: { message_id: messageId },
-            data: { content: JSON.stringify({ text: `❌ 搜索失败: ${error}` }), msg_type: 'text' }
-          });
-        });
-        return null;
-      
-      } else if (text.startsWith('/hot') || text.startsWith('/discover') || text.startsWith('/排行')) {
+      if (text.startsWith('/hot') || text.startsWith('/discover') || text.startsWith('/排行')) {
         const type = 'movie';
         const tag = '热门';
         
@@ -1344,7 +1249,9 @@ export function startFeishuBot() {
           }
         });
         return null;
-} else if (text.startsWith('/transfer-quark ')) {
+      }
+
+      if (text.startsWith('/transfer-quark ')) {
         const args = text.slice(16).trim().split(' ');
         const pwdId = args[0];
         const passcode = args[1] || '';
@@ -1388,12 +1295,104 @@ export function startFeishuBot() {
           }
         })();
         return null;
-      } else {
-          await client.im.message.reply({
-             path: { message_id: messageId },
-             data: { content: JSON.stringify(buildWelcomeGuideCard()), msg_type: 'interactive' }
-           });
       }
+
+      // 直接发送关键词进行搜索（无需 /search 前缀）
+      let keyword = text.trim();
+      if (keyword.startsWith('/search')) {
+        keyword = keyword.slice(7).trim();
+      } else if (keyword.startsWith('/搜索')) {
+        keyword = keyword.slice(3).trim();
+      }
+
+      if (!keyword) {
+        // 若文本为空或无有效搜索词，直接静默，不返回任何弹窗/提示卡片
+        return null;
+      }
+
+      client.im.message.reply({
+        path: { message_id: messageId },
+        data: { content: JSON.stringify({ text: `⏳ 正在搜索: ${keyword}...` }), msg_type: 'text' }
+      });
+
+      Searcher.searchAll(keyword).then(async (results) => {
+        const allItems = results.data.flatMap((channel: any) => channel.list || []);
+        
+        const hasQuark = !!process.env.QUARK_COOKIE;
+        const has115 = !!process.env.CLOUD115_COOKIE;
+        const maybeValidItems: any[] = [];
+        for (const item of allItems) {
+          const quarkLink = item.cloudLinks?.find((link: string) => /https?:\/\/pan\.quark\.cn\/[^\s<>"]+/.test(link));
+          if (quarkLink && hasQuark) {
+            const match = quarkLink.match(/\/s\/([a-zA-Z0-9]+)/);
+            const pwdId = match ? match[1] : item.messageId;
+            if (pwdId) {
+              maybeValidItems.push({
+                ...item,
+                pwdId,
+                cloudType: 'quark',
+                cloudLinks: [quarkLink]
+              });
+            }
+          }
+          const pan115Link = item.cloudLinks?.find((link: string) => /https?:\/\/(?:115|anxia|115cdn)\.com\/s\/[^\s<>"]+/.test(link));
+          if (pan115Link && has115) {
+              maybeValidItems.push({
+                ...item,
+                is115: true,
+                cloudType: '115网盘',
+                cloudLinks: [pan115Link]
+              });
+          }
+        }
+        
+        const validItems: any[] = [];
+        const service = new QuarkService();
+        service.setCookieString(process.env.QUARK_COOKIE || "");
+        
+        for (let i = 0; i < maybeValidItems.length; i += 10) {
+           const chunk = maybeValidItems.slice(i, i + 10);
+           const promises = chunk.map(async (item) => {
+              if (item.is115) return { item, isValid: true };
+              const isValid = await service.checkShareValid(item.pwdId);
+              return { item, isValid };
+           });
+           const res = await Promise.all(promises);
+           validItems.push(...res.filter(r => r.isValid).map(r => r.item));
+        }
+        
+        // Sort items by title matching relevance with normalization
+        const normalizeText = (text: string): string => {
+          if (!text) return '';
+          return text.toLowerCase().replace(/[\u00b7\u2022\u2027\u30fb\.\s\-\_]/g, '');
+        };
+        const normalizedTerms = keyword 
+          ? keyword.split(/\s+/).map((t: string) => normalizeText(t)).filter((t: string) => t.length > 0) 
+          : [];
+        validItems.sort((a: any, b: any) => {
+          const aTitleMatch = normalizedTerms.every((term: string) => normalizeText(a.title || '').includes(term));
+          const bTitleMatch = normalizedTerms.every((term: string) => normalizeText(b.title || '').includes(term));
+          if (aTitleMatch && !bTitleMatch) return -1;
+          if (!aTitleMatch && bTitleMatch) return 1;
+          return 0;
+        });
+        
+        const searchId = messageId;
+        searchCache.set(searchId, { keyword, items: validItems });
+        
+        const cardJson = await buildSearchCard(searchId, 1, client);
+
+        await client.im.message.reply({
+          path: { message_id: messageId },
+          data: { content: JSON.stringify(cardJson), msg_type: 'interactive' }
+        });
+      }).catch(async (error) => {
+        await client.im.message.reply({
+          path: { message_id: messageId },
+          data: { content: JSON.stringify({ text: `❌ 搜索失败: ${error}` }), msg_type: 'text' }
+        });
+      });
+      return null;
     },
     'card.action.trigger': async (data: any) => {
       logger.info('Card action triggered with data: ' + JSON.stringify(data));

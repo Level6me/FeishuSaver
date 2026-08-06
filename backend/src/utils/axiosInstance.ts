@@ -10,7 +10,8 @@ export function createAxiosInstance(
   baseURL: string,
   headers?: AxiosRequestHeaders,
   useProxy: boolean = false,
-  proxyConfig?: ProxyConfig
+  proxyConfig?: ProxyConfig,
+  timeout: number = 10000
 ): AxiosInstance {
   let agent;
   if (useProxy && proxyConfig) {
@@ -21,7 +22,7 @@ export function createAxiosInstance(
 
   return axios.create({
     baseURL,
-    timeout: 30000,
+    timeout,
     headers,
     httpsAgent: useProxy ? agent : undefined,
     withCredentials: true,

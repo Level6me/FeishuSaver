@@ -57,7 +57,8 @@ export class Searcher {
       globalSetting?.isProxyEnabled,
       globalSetting?.isProxyEnabled
         ? { host: globalSetting?.httpProxyHost, port: globalSetting?.httpProxyPort }
-        : undefined
+        : undefined,
+      5000
     );
   }
 
@@ -88,7 +89,7 @@ export class Searcher {
       ? config.telegram.channels.filter((channel: any) => channel.id === channelId)
       : config.telegram.channels;
 
-    // 使用Promise.all进行并行请求
+    // 使用 Promise.allSettled 进行防超时并行请求
     const searchPromises = channelList.map(async (channel) => {
       try {
         const messageIdparams = messageId ? `before=${messageId}` : "";
@@ -159,8 +160,8 @@ export class Searcher {
       }
     });
 
-    // 等待所有请求完成
-    await Promise.all(searchPromises);
+    // 等待所有请求完成 (使用 Promise.allSettled)
+    await Promise.allSettled(searchPromises);
 
     return {
       data: allResults,

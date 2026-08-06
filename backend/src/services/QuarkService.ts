@@ -11,7 +11,7 @@ import {
   QuarkFolderItem,
   SaveFileParams,
 } from "../types/cloud";
-import { ICloudStorageService } from "@/types/services";
+import { ICloudStorageService } from "../types/services";
 
 interface QuarkShareInfo {
   stoken?: string;
