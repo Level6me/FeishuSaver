@@ -1298,7 +1298,8 @@ export function startFeishuBot() {
         return null;
       }
 
-      // 直接发送关键词进行搜索（无需 /search 前缀）
+      // 直接发送关键词进行搜索（支持 /search 关键词，或直接发送关键词）
+      const isExplicitSearch = text.startsWith('/search') || text.startsWith('/搜索');
       let keyword = text.trim();
       if (keyword.startsWith('/search')) {
         keyword = keyword.slice(7).trim();
@@ -1307,7 +1308,14 @@ export function startFeishuBot() {
       }
 
       if (!keyword) {
-        // 若文本为空或无有效搜索词，直接静默，不返回任何弹窗/提示卡片
+        if (isExplicitSearch) {
+          if (openId) userStates.set(openId, 'awaiting_search_keyword');
+          await client.im.message.reply({
+            path: { message_id: messageId },
+            data: { content: JSON.stringify({ text: "🔍 请直接回复需要搜索的资源名称 (例如: 庆余年)：" }), msg_type: 'text' }
+          });
+        }
+        // 若不是显式命令且文本为空，则直接静默
         return null;
       }
 

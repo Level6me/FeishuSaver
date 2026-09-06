@@ -15,7 +15,7 @@
     "@larksuiteoapi/node-sdk": "^1.71.1",
     "axios": "^1.6.7",
     "bcrypt": "^5.1.1",
-    "cheerio": "^1.0.0",
+    "cheerio": "1.0.0",
     "commander": "^15.0.0",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -28,7 +28,11 @@
     "socket.io": "^4.8.1",
     "sqlite3": "^5.1.7",
     "tunnel": "^0.0.6",
+    "undici": "^6.28.1",
     "winston": "^3.17.0"
+  },
+  "overrides": {
+    "undici": "^6.28.1"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",

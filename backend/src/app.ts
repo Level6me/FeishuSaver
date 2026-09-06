@@ -1,4 +1,13 @@
-// filepath: /d:/code/CloudDiskDown/backend/src/app.ts
+// Node.js 18 兼容垫片：Node 18 将 File 包含在 node:buffer 中但未挂载至全局，防止 undici/cheerio 抛 ReferenceError: File is not defined
+if (typeof (globalThis as any).File === "undefined") {
+  try {
+    const { File } = require("node:buffer");
+    if (File) {
+      (globalThis as any).File = File;
+    }
+  } catch (_) {}
+}
+
 import "./types/express";
 import express from "express";
 import { container } from "./inversify.config";
