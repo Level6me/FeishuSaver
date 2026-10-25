@@ -1121,14 +1121,14 @@ export function startFeishuBot() {
                 }
                 const regexAcc = new RegExp(`^${accountKey}=.*`, 'm');
                 if (regexAcc.test(envContent)) {
-                  envContent = envContent.replace(regexAcc, `${accountKey}=${account}`);
+                  envContent = envContent.replace(regexAcc, () => `${accountKey}=${account}`);
                 } else {
                   envContent += `\n${accountKey}=${account}\n`;
                 }
                 
                 const regexPwd = new RegExp(`^${passwordKey}=.*`, 'm');
                 if (regexPwd.test(envContent)) {
-                  envContent = envContent.replace(regexPwd, `${passwordKey}=${password}`);
+                  envContent = envContent.replace(regexPwd, () => `${passwordKey}=${password}`);
                 } else {
                   envContent += `\n${passwordKey}=${password}\n`;
                 }
@@ -1178,7 +1178,7 @@ export function startFeishuBot() {
               }
               const regex = new RegExp(`^${envKey}=.*`, 'm');
               if (regex.test(envContent)) {
-                envContent = envContent.replace(regex, `${envKey}=${envValue}`);
+                envContent = envContent.replace(regex, () => `${envKey}=${envValue}`);
               } else {
                 envContent += `\n${envKey}=${envValue}\n`;
               }
@@ -1717,7 +1717,7 @@ function buildCookiePromptCard(title: string, desc: string, example?: string) {
           }
           const regex = new RegExp(`^TELE_CHANNELS=.*`, 'm');
           if (regex.test(envContent)) {
-            envContent = envContent.replace(regex, `TELE_CHANNELS=${text}`);
+            envContent = envContent.replace(regex, () => `TELE_CHANNELS=${text}`);
           } else {
             envContent += `\nTELE_CHANNELS=${text}\n`;
           }
