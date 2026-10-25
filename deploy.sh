@@ -83,8 +83,8 @@ if [ "$mode" != "1" ] && [ "$mode" != "2" ]; then
 fi
 
 echo -e "\n${YELLOW}▶ 请输入飞书机器人凭证信息 (可直接在飞书开放平台-应用凭证中获取):${NC}"
-read -p "请输入 飞书 App ID (FEISHU_APP_ID): " app_id
-read -p "请输入 飞书 App Secret (FEISHU_APP_SECRET): " app_secret
+read -r -p "请输入 飞书 App ID (FEISHU_APP_ID): " app_id
+read -r -p "请输入 飞书 App Secret (FEISHU_APP_SECRET): " app_secret
 
 if [ -z "$app_id" ] || [ -z "$app_secret" ]; then
     echo -e "${RED}❌ 飞书 App ID 和 App Secret 不能为空，退出部署。${NC}"
@@ -103,6 +103,7 @@ QUARK_COOKIE=
 EOF
 
 echo -e "${GREEN}✓ 配置文件 .env 生成/覆盖成功!${NC}"
+chmod 600 .env 2>/dev/null || true
 
 if [ "$mode" == "1" ]; then
     echo -e "\n${GREEN}================ 开始一键自动部署 ==================${NC}"
